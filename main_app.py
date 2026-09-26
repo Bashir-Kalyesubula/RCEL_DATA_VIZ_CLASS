@@ -2,42 +2,50 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 st.set_page_config(layout="wide", page_title="AI World Graph Analysis")
 
-st.title("AI World Graph Visualization")
+st.title("AI World Graph Sankey Visualization")
 
-# Generate synthetic network/data layout to mirror the graphic structure
+# Generate synthetic network/data layout
 np.random.seed(42)
 n_nodes = 50
 nodes_df = pd.DataFrame({
-    'x': np.random.randn(n_nodes),
-    'y': np.random.randn(n_nodes),
     'category': np.random.choice(['Infrastructure', 'Models', 'Applications', 'Policy'], n_nodes),
     'impact_score': np.random.uniform(10, 100, n_nodes)
 })
 
-# Display summary metrics
+# Aggregate flows from Global AI Hub to Categories
+flow_df = nodes_df.groupby('category')['impact_score'].sum().reset_index()
+
+# Define Sankey Nodes and Links
+labels = ["Global AI Hub"] + flow_df['category'].tolist()
+sources = [0] * len(flow_df)
+targets = list(range(1, len(flow_df) + 1))
+values = flow_df['impact_score'].tolist()
+
+fig = go.Figure(data=[go.Sankey(
+    node=dict(
+        pad=15,
+        thickness=20,
+        line=dict(color="black", width=0.5),
+        label=labels,
+        color=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+    ),
+    link=dict(
+        source=sources,
+        target=targets,
+        value=values
+    )
+)])
+
+fig.update_layout(title_text="Global AI Impact Allocation", font_size=12)
+
+# Display metrics and plot
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Nodes", n_nodes)
-col1.metric("Categories", len(nodes_df['category'].unique()))
+col2.metric("Categories", len(flow_df))
 col3.metric("Max Impact Score", f"{nodes_df['impact_score'].max():.1f}")
 
-# Plot visualization graph
-fig, ax = plt.subplots(figsize=(10, 6))
-categories = nodes_df['category'].unique()
-colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
-
-for cat, color in zip(categories, colors):
-    subset = nodes_df[nodes_df['category'] == cat]
-    ax.scatter(subset['x'], subset['y'], s=subset['impact_score']*3, label=cat, color=color, alpha=0.7, edgecolors='black')
-
-ax.set_title("Global AI Ecosystem Network Distribution", fontsize=14)
-ax.set_xlabel("Latent Feature Axis 1")
-ax.set_ylabel("Latent Feature Axis 2")
-ax.legend(title="Sector Classification")
-ax.grid(True, linestyle='--', alpha=0.3)
-
-st.pyplot(fig)
-
+st.plotly_chart(fig, use_container_width=True)
